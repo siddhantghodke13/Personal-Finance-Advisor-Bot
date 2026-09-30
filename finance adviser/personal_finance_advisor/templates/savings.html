@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Savings Goals & Wealth Building — Personal Finance Advisor Bot{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-4 py-4">
+    <!-- Top Action Bar -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-extrabold mb-1">Savings Goals</h2>
+            <p class="text-muted small mb-0">Track target funds, emergency reserves, and major lifetime purchases</p>
+        </div>
+        <button class="btn btn-primary fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#newGoalModal">
+            <i class="bi bi-plus-circle me-1"></i> New Savings Goal
+        </button>
+    </div>
+
+    <!-- Aggregated Progress Banner -->
+    <div class="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4">
+        <div class="row g-4 align-items-center">
+            <div class="col-md-4">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Total Accumulated Savings</span>
+                <div class="h2 fw-bold text-success mb-0">{{ total_saved|inr }}</div>
+            </div>
+            <div class="col-md-4">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Overall Target Portfolio</span>
+                <div class="h2 fw-bold text-primary mb-0">{{ total_target|inr }}</div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                    <span>Overall Portfolio Progress:</span>
+                    <span class="fw-bold text-dark">{{ overall_progress }}%</span>
+                </div>
+                <div class="progress" style="height: 10px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ [overall_progress, 100]|min }}%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Savings Goals Cards -->
+    <div class="row g-4">
+        {% if goals %}
+            {% for g in goals %}
+            <div class="col-md-6 col-xl-4">
+                <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle mb-1">Goal</span>
+                            <h5 class="fw-bold mb-1">{{ g.goal_name }}</h5>
+                            <span class="text-muted small">{{ g.description or 'Personal savings goal' }}</span>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light rounded-circle" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end border-0 shadow-sm">
+                                <li>
+                                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editGoalModal{{ g.id }}">
+                                        <i class="bi bi-pencil me-2"></i> Edit Goal
+                                    </button>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" action="{{ url_for('savings.delete', id=g.id) }}" onsubmit="return confirm('Remove goal {{ g.goal_name }}?');">
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="bi bi-trash me-2"></i> Delete Goal
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-baseline mb-1">
+                            <span class="h4 fw-bold text-success mb-0">{{ g.amount|inr }}</span>
+                            <span class="text-muted small">of {{ g.goal_amount|inr }}</span>
+                        </div>
+
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar {% if g.progress_percentage >= 100 %}bg-success{% else %}bg-primary{% endif %}"
+                                 role="progressbar"
+                                 style="width: {{ [g.progress_percentage, 100]|min }}%;"></div>
+                        </div>
+
+                        <div class="d-flex justify-content-between small text-muted mt-2">
+                            <span>{{ g.progress_percentage }}% Completed</span>
+                            <span>Remaining: {{ g.remaining_amount|inr }}</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">
+                            <i class="bi bi-calendar3 me-1"></i> Target: {{ g.date.strftime('%b %Y') if g.date else 'Ongoing' }}
+                        </span>
+                        <button class="btn btn-sm btn-outline-success fw-semibold" data-bs-toggle="modal" data-bs-target="#depositModal{{ g.id }}">
+                            <i class="bi bi-plus-lg me-1"></i> Contribute
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal: Quick Contribute -->
+            <div class="modal fade" id="depositModal{{ g.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-sm">
+                    <form method="POST" action="{{ url_for('savings.contribute', id=g.id) }}" class="modal-content border-0 shadow-lg rounded-4">
+                        <div class="modal-header border-0 pb-0">
+                            <h6 class="modal-title fw-bold">Deposit to {{ g.goal_name }}</h6>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Contribution Amount (₹)</label>
+                                <input type="number" step="100" min="1" name="deposit_amount" class="form-control" placeholder="e.g. 5000" required autofocus>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">Confirm Deposit</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal: Edit Goal -->
+            <div class="modal fade" id="editGoalModal{{ g.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form method="POST" action="{{ url_for('savings.edit', id=g.id) }}" class="modal-content border-0 shadow-lg rounded-4">
+                        <div class="modal-header border-0 pb-0">
+                            <h5 class="modal-title fw-bold">Edit Savings Goal</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Goal Name</label>
+                                <input type="text" name="goal_name" class="form-control" value="{{ g.goal_name }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Target Amount (₹)</label>
+                                <input type="number" step="100" min="1" name="goal_amount" class="form-control" value="{{ g.goal_amount }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Current Saved Balance (₹)</label>
+                                <input type="number" step="100" min="0" name="amount" class="form-control" value="{{ g.amount }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Target Date</label>
+                                <input type="date" name="date" class="form-control" value="{{ g.date.strftime('%Y-%m-%d') if g.date else '' }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Description</label>
+                                <input type="text" name="description" class="form-control" value="{{ g.description or '' }}">
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary fw-semibold">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="card border-0 shadow-sm rounded-4 bg-white text-center py-5">
+                    <i class="bi bi-piggy-bank fs-1 text-secondary mb-2"></i>
+                    <h5>No savings goals created yet</h5>
+                    <p class="text-muted small mb-3">Establish an emergency reserve or target your next big aspiration.</p>
+                    <div>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newGoalModal">Create First Savings Goal</button>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal: New Goal -->
+<div class="modal fade" id="newGoalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('savings.add') }}" class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Create Savings Goal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Goal Name <span class="text-danger">*</span></label>
+                    <input type="text" name="goal_name" class="form-control" placeholder="e.g. Emergency Fund, New Laptop, Goa Trip" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Target Amount (₹) <span class="text-danger">*</span></label>
+                    <input type="number" step="100" min="1" name="goal_amount" class="form-control" placeholder="e.g. 150000" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Current Initial Savings (₹)</label>
+                    <input type="number" step="100" min="0" name="current_amount" class="form-control" value="0">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Target Date</label>
+                    <input type="date" name="date" class="form-control" value="{{ today }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Description (Optional)</label>
+                    <input type="text" name="description" class="form-control" placeholder="e.g. 6 months living expenses in liquid fund">
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary fw-semibold">Create Goal</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

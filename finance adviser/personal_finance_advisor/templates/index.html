@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Personal Finance Advisor Bot — AI-Powered Smart Money Management{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="py-5 bg-gradient-dark text-white position-relative overflow-hidden">
+    <div class="container py-lg-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-7">
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-primary-subtle text-primary border border-primary-subtle small fw-semibold mb-3">
+                    <i class="bi bi-stars"></i> Next-Gen AI Financial Intelligence
+                </div>
+                <h1 class="display-4 fw-extrabold tracking-tight mb-3">
+                    Personal Finance <br><span class="text-gradient">Advisor Bot</span>
+                </h1>
+                <p class="lead text-light-50 mb-4 fs-5" style="max-width: 600px;">
+                    Track your money. Understand your spending. Build better financial habits. Powered by Google Gemini and advanced financial analysis in Indian Rupees (₹).
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg px-4 py-3 fw-bold shadow-sm">
+                        <i class="bi bi-rocket-takeoff me-2"></i> Get Started Free
+                    </a>
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg px-4 py-3 fw-bold">
+                        <i class="bi bi-box-arrow-in-right me-2"></i> Sign In
+                    </a>
+                    <a href="{{ url_for('auth.demo_login') }}" class="btn btn-warning btn-lg px-4 py-3 fw-bold shadow-sm">
+                        <i class="bi bi-lightning-charge-fill me-2"></i> 1-Click Demo Account
+                    </a>
+                </div>
+                <div class="mt-4 d-flex align-items-center gap-4 text-light-50 small">
+                    <div><i class="bi bi-shield-check text-success me-1"></i> No Credit Card Required</div>
+                    <div><i class="bi bi-currency-rupee text-warning me-1"></i> INR Default (₹)</div>
+                    <div><i class="bi bi-cpu text-info me-1"></i> Gemini 2.5 / OpenAI</div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="card shadow-2xl border-0 bg-dark-card text-white rounded-4 p-4 border border-secondary-subtle">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">
+                            <i class="bi bi-graph-up-arrow me-1"></i> Healthy Finances
+                        </span>
+                        <span class="text-white-50 small">Current Month</span>
+                    </div>
+                    <div class="mb-4">
+                        <div class="text-white-50 small text-uppercase fw-semibold tracking-wider">Remaining Balance</div>
+                        <div class="h2 fw-bold text-white mb-0">₹42,300.00</div>
+                    </div>
+                    <div class="row g-2 mb-4">
+                        <div class="col-6">
+                            <div class="p-3 rounded-3 bg-dark-subtle border border-secondary-subtle">
+                                <span class="text-white-50 small d-block">Monthly Income</span>
+                                <span class="fw-bold text-success fs-5">₹82,000</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-3 rounded-3 bg-dark-subtle border border-secondary-subtle">
+                                <span class="text-white-50 small d-block">Total Expenses</span>
+                                <span class="fw-bold text-danger fs-5">₹39,700</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-3 rounded-3 bg-primary-subtle text-primary border border-primary-subtle small d-flex gap-2 align-items-start">
+                        <i class="bi bi-lightbulb-fill fs-5 mt-n1"></i>
+                        <div>
+                            <strong>AI Financial Insight:</strong>
+                            <div class="mt-1 text-primary-emphasis">
+                                You are saving 28% of your monthly income. Maintaining this pace will reach your emergency fund goal 2 months ahead of schedule!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Grid -->
+<section class="py-5 bg-white">
+    <div class="container py-lg-4">
+        <div class="text-center mb-5" style="max-width: 700px; margin: 0 auto;">
+            <h2 class="fw-bold display-6 mb-2">Comprehensive Financial Tools</h2>
+            <p class="text-muted">Everything you need to master your personal economy, eliminate overspending, and grow your wealth.</p>
+        </div>
+
+        <div class="row g-4">
+            <!-- Feature 1 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm rounded-4 p-4 feature-card">
+                    <div class="feature-icon bg-primary-subtle text-primary rounded-3 d-inline-flex align-items-center justify-content-center mb-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-wallet-fill fs-4"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Expense Tracking</h5>
+                    <p class="text-muted small mb-0">Record and classify all expenses with payment methods like UPI, Credit Card, and Cash. Search and filter by date, category, or keyword.</p>
+                </div>
+            </div>
+            <!-- Feature 2 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm rounded-4 p-4 feature-card">
+                    <div class="feature-icon bg-success-subtle text-success rounded-3 d-inline-flex align-items-center justify-content-center mb-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-pie-chart-fill fs-4"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Smart Budgeting</h5>
+                    <p class="text-muted small mb-0">Set category limits and track Planned vs Actual spending with real-time percentage indicators and instant overspending warnings.</p>
+                </div>
+            </div>
+            <!-- Feature 3 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm rounded-4 p-4 feature-card">
+                    <div class="feature-icon bg-warning-subtle text-warning rounded-3 d-inline-flex align-items-center justify-content-center mb-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-stars fs-4"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">AI Financial Insights</h5>
+                    <p class="text-muted small mb-0">Ask questions to your AI Advisor grounded in your real financial data. Generate AI budgets tailored to your income using the 50/30/20 rule.</p>
+                </div>
+            </div>
+            <!-- Feature 4 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm rounded-4 p-4 feature-card">
+                    <div class="feature-icon bg-info-subtle text-info rounded-3 d-inline-flex align-items-center justify-content-center mb-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-piggy-bank-fill fs-4"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Savings Goals</h5>
+                    <p class="text-muted small mb-0">Create dedicated savings milestones for emergency reserves, new gadgets, or vacations. Track contributions and percentage completion visually.</p>
+                </div>
+            </div>
+            <!-- Feature 5 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm rounded-4 p-4 feature-card">
+                    <div class="feature-icon bg-danger-subtle text-danger rounded-3 d-inline-flex align-items-center justify-content-center mb-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-file-earmark-spreadsheet-fill fs-4"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Financial Reports</h5>
+                    <p class="text-muted small mb-0">Detailed monthly reports comparing income vs expense, category breakdowns, savings rates, and printable executive summaries.</p>
+                </div>
+            </div>
+            <!-- Feature 6 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm rounded-4 p-4 feature-card">
+                    <div class="feature-icon bg-secondary-subtle text-secondary rounded-3 d-inline-flex align-items-center justify-content-center mb-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-shield-lock-fill fs-4"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Private & Isolated</h5>
+                    <p class="text-muted small mb-0">Complete data isolation per user. Werkzeug salted password hashing and zero sharing of sensitive credentials with AI services.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works -->
+<section class="py-5 bg-light border-top">
+    <div class="container py-lg-4">
+        <div class="text-center mb-5" style="max-width: 600px; margin: 0 auto;">
+            <h2 class="fw-bold display-6 mb-2">How It Works</h2>
+            <p class="text-muted">Four simple steps to total financial clarity.</p>
+        </div>
+
+        <div class="row g-4 text-center">
+            <div class="col-md-3">
+                <div class="p-3">
+                    <div class="step-badge mx-auto mb-3 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5" style="width: 48px; height: 48px;">1</div>
+                    <h6 class="fw-bold">Sign Up & Setup</h6>
+                    <p class="text-muted small">Create an account in 30 seconds or click 1-Click Demo to test with sample data.</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3">
+                    <div class="step-badge mx-auto mb-3 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5" style="width: 48px; height: 48px;">2</div>
+                    <h6 class="fw-bold">Log Transactions</h6>
+                    <p class="text-muted small">Enter your salary, freelancing, rent, groceries, and dining with seamless UPI & Card tracking.</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3">
+                    <div class="step-badge mx-auto mb-3 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5" style="width: 48px; height: 48px;">3</div>
+                    <h6 class="fw-bold">Plan Your Budget</h6>
+                    <p class="text-muted small">Use AI to generate optimal monthly category allocations using the 50/30/20 benchmark.</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3">
+                    <div class="step-badge mx-auto mb-3 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5" style="width: 48px; height: 48px;">4</div>
+                    <h6 class="fw-bold">Get AI Guidance</h6>
+                    <p class="text-muted small">Ask the AI Advisor questions on reducing costs, saving faster, and building financial health.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-5">
+            <a href="{{ url_for('auth.demo_login') }}" class="btn btn-warning btn-lg px-5 py-3 fw-bold shadow-sm">
+                <i class="bi bi-play-circle-fill me-2"></i> Launch Interactive Demo Now
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

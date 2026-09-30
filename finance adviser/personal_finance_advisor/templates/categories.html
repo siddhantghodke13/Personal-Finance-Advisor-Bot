@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Expense Categories — Personal Finance Advisor Bot{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-4 py-4">
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-extrabold mb-1">Expense Categories</h2>
+            <p class="text-muted small mb-0">Define spending buckets and configure monthly budget caps</p>
+        </div>
+        <button class="btn btn-primary fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#newCategoryModal">
+            <i class="bi bi-folder-plus me-1"></i> New Category
+        </button>
+    </div>
+
+    <!-- Category Cards Grid -->
+    <div class="row g-4">
+        {% for item in categories_data %}
+            {% set cat = item.category %}
+            <div class="col-md-6 col-xl-4">
+                <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="p-2 rounded-3 bg-primary-subtle text-primary">
+                                <i class="bi bi-tag-fill fs-5"></i>
+                            </span>
+                            <h5 class="fw-bold mb-0">{{ cat.name }}</h5>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light rounded-circle" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end border-0 shadow-sm">
+                                <li>
+                                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editCatModal{{ cat.id }}">
+                                        <i class="bi bi-pencil me-2"></i> Edit Limit & Name
+                                    </button>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" action="{{ url_for('expenses.delete_category', id=cat.id) }}" onsubmit="return confirm('Delete category {{ cat.name }}? This is only allowed if no expenses are logged under it.');">
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="bi bi-trash me-2"></i> Delete Category
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span>Current Month Spending:</span>
+                            <span class="fw-bold text-dark">{{ item.spent|inr }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between small text-muted mb-2">
+                            <span>Monthly Cap:</span>
+                            <span class="fw-bold text-dark">
+                                {% if cat.monthly_limit > 0 %}{{ cat.monthly_limit|inr }}{% else %}No Cap Set{% endif %}
+                            </span>
+                        </div>
+
+                        {% if cat.monthly_limit > 0 %}
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar {% if item.used_pct > 100 %}bg-danger{% elif item.used_pct > 80 %}bg-warning{% else %}bg-primary{% endif %}"
+                                     role="progressbar"
+                                     style="width: {{ [item.used_pct, 100]|min }}%;"></div>
+                            </div>
+                            <div class="d-flex justify-content-between small text-muted mt-1">
+                                <span>Used: {{ item.used_pct }}%</span>
+                                <span>Remaining: {{ item.remaining|inr }}</span>
+                            </div>
+                        {% else %}
+                            <div class="small text-muted fst-italic">Set a monthly limit to track spending discipline.</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mt-auto pt-2 border-top d-flex justify-content-between align-items-center small text-muted">
+                        <span>{{ item.expense_count }} logged transactions</span>
+                        <a href="{{ url_for('expenses.index', category_id=cat.id) }}" class="text-primary fw-semibold text-decoration-none">
+                            View <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Category Modal -->
+            <div class="modal fade" id="editCatModal{{ cat.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form method="POST" action="{{ url_for('expenses.edit_category', id=cat.id) }}" class="modal-content border-0 shadow-lg rounded-4">
+                        <div class="modal-header border-0 pb-0">
+                            <h5 class="modal-title fw-bold">Edit Category</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Category Name</label>
+                                <input type="text" name="name" class="form-control" value="{{ cat.name }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Monthly Spending Cap (₹)</label>
+                                <input type="number" step="0.01" min="0" name="monthly_limit" class="form-control" value="{{ cat.monthly_limit }}">
+                                <div class="form-text small">Enter 0 for unlimited.</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary fw-semibold">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal: New Category -->
+<div class="modal fade" id="newCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('expenses.add_category') }}" class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Create New Expense Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Category Name <span class="text-danger">*</span></label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Gym & Fitness, Pet Care" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Monthly Limit (₹)</label>
+                    <input type="number" step="0.01" min="0" name="monthly_limit" class="form-control" placeholder="e.g. 5000">
+                    <div class="form-text small">Optional monthly spending target for budget alerts.</div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary fw-semibold">Create Category</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

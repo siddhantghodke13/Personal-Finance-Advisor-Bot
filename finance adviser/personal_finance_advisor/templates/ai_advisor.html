@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}AI Financial Advisor — Personal Finance Advisor Bot{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-4 py-4">
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h2 class="fw-extrabold mb-1">AI Financial Advisor</h2>
+                <span class="badge bg-warning text-dark fw-bold">Gemini / OpenAI</span>
+            </div>
+            <p class="text-muted small mb-0">Personalized educational guidance grounded in your live income, expenses, and savings goals</p>
+        </div>
+        <button class="btn btn-outline-primary btn-sm fw-semibold" onclick="triggerDeepSpendingAnalysis()">
+            <i class="bi bi-search me-1"></i> Analyze My Spending Habits
+        </button>
+    </div>
+
+    <!-- API Status Notice if unconfigured -->
+    {% if not is_configured %}
+    <div class="alert alert-warning border-0 shadow-sm rounded-4 mb-4 d-flex align-items-start gap-3">
+        <i class="bi bi-info-circle-fill fs-4 text-warning mt-1"></i>
+        <div>
+            <h6 class="fw-bold mb-1">AI Service Configuration Notice</h6>
+            <div class="small">
+                AI features are running in educational demo mode. To enable live Gemini AI generation:
+                <ol class="mb-1 mt-1 ps-3">
+                    <li>Open <code>.env</code> in your project directory</li>
+                    <li>Add your free Gemini API key: <code>GEMINI_API_KEY=your_key_here</code></li>
+                    <li>Restart Flask.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- Chat & Q&A Box -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 bg-white d-flex flex-column" style="min-height: 580px;">
+                <!-- Chat Header -->
+                <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="p-2 rounded-circle bg-warning-subtle text-warning">
+                            <i class="bi bi-robot fs-5"></i>
+                        </span>
+                        <div>
+                            <div class="fw-bold">Financial Bot</div>
+                            <div class="small text-muted">Ready to assist with budgeting, saving, and expense reduction</div>
+                        </div>
+                    </div>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                        <i class="bi bi-shield-check me-1"></i> Isolated User Context
+                    </span>
+                </div>
+
+                <!-- Chat Messages Scroll Area -->
+                <div class="card-body p-4 flex-grow-1 overflow-y-auto" id="chatMessageArea" style="max-height: 440px;">
+                    <!-- Welcome Bot Message -->
+                    <div class="d-flex gap-3 mb-4">
+                        <div class="rounded-circle bg-warning text-dark p-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px;">
+                            <i class="bi bi-stars"></i>
+                        </div>
+                        <div class="bg-light p-3 rounded-4 border" style="max-width: 85%;">
+                            <p class="mb-2 fw-semibold">Hello {{ current_user.name }}! I am your Personal Finance Advisor Bot.</p>
+                            <p class="mb-2 small text-secondary">
+                                I have access to your monthly financial records (Income: ₹{{ summary.total_income|round(2) }}, Expenses: ₹{{ summary.total_expenses|round(2) }}, Savings Rate: {{ summary.savings_rate }}%).
+                            </p>
+                            <p class="mb-0 small text-secondary">
+                                Click any suggested question below or type your custom query:
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Suggested Query Pills -->
+                <div class="px-4 py-2 bg-light-subtle border-top border-bottom">
+                    <div class="small text-muted mb-2 fw-semibold">Suggested Questions:</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for q in sample_questions %}
+                            <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill small py-1 px-3" onclick="askQuestion('{{ q }}')">
+                                {{ q }}
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Chat Input Form -->
+                <div class="card-footer bg-white border-0 p-3">
+                    <form id="chatForm" onsubmit="event.preventDefault(); submitChat();" class="d-flex gap-2">
+                        <input type="text" id="userInput" class="form-control rounded-pill px-3 py-2" placeholder="Ask a financial question (e.g. How can I reduce rent or food expenses?)..." required autocomplete="off">
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold" id="sendBtn">
+                            <i class="bi bi-send-fill me-1"></i> Send
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar: Financial Snapshot & Education Disclaimer -->
+        <div class="col-lg-4">
+            <!-- User Financial Snapshot -->
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4">
+                <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-database-check text-primary"></i> Grounded Financial Data
+                </h6>
+                <div class="small text-muted mb-3">The AI contextualizes responses with these active figures:</div>
+
+                <div class="d-flex justify-content-between py-2 border-bottom small">
+                    <span class="text-muted">Monthly Income:</span>
+                    <span class="fw-bold text-success">{{ summary.total_income|inr }}</span>
+                </div>
+                <div class="d-flex justify-content-between py-2 border-bottom small">
+                    <span class="text-muted">Total Expenses:</span>
+                    <span class="fw-bold text-danger">{{ summary.total_expenses|inr }}</span>
+                </div>
+                <div class="d-flex justify-content-between py-2 border-bottom small">
+                    <span class="text-muted">Current Savings Rate:</span>
+                    <span class="fw-bold text-primary">{{ summary.savings_rate }}%</span>
+                </div>
+                <div class="d-flex justify-content-between py-2 border-bottom small">
+                    <span class="text-muted">Financial Health:</span>
+                    <span class="badge bg-{{ health.color }}">{{ health.status }}</span>
+                </div>
+                <div class="mt-3">
+                    <span class="text-muted small d-block mb-1">Financial Goal:</span>
+                    <div class="p-2 rounded bg-light small fw-medium text-dark border">
+                        {{ current_user.financial_goal or 'Not set yet' }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Disclaimer Card -->
+            <div class="card border-0 shadow-sm rounded-4 bg-light p-3 border">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-shield-exclamation text-secondary fs-5 mt-n1"></i>
+                    <div class="small text-muted">
+                        <strong>Educational Disclaimer:</strong>
+                        This bot is designed for student education and personal habit formation. It provides general suggestions based on mathematical models and the 50/30/20 rule, not certified financial advice.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function appendUserMessage(text) {
+    const area = document.getElementById('chatMessageArea');
+    const msg = document.createElement('div');
+    msg.className = 'd-flex gap-3 mb-4 justify-content-end';
+    msg.innerHTML = `
+        <div class="bg-primary text-white p-3 rounded-4 shadow-sm" style="max-width: 80%;">
+            <p class="mb-0 small">${escapeHtml(text)}</p>
+        </div>
+        <div class="rounded-circle bg-primary text-white p-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px;">
+            <i class="bi bi-person-fill"></i>
+        </div>
+    `;
+    area.appendChild(msg);
+    area.scrollTop = area.scrollHeight;
+}
+
+function appendBotMessage(text, isAnalysis = false) {
+    const area = document.getElementById('chatMessageArea');
+    const msg = document.createElement('div');
+    msg.className = 'd-flex gap-3 mb-4';
+    
+    // Replace newlines with <br> and format bullet points
+    let formatted = escapeHtml(text).replace(/\n/g, '<br>');
+    formatted = formatted.replace(/\* (.*?)(<br>|$)/g, '<li>$1</li>');
+    if (formatted.includes('<li>')) {
+        formatted = formatted.replace(/(<li>.*?<\/li>)+/g, '<ul class="mb-2 ps-3">$&</ul>');
+    }
+
+    msg.innerHTML = `
+        <div class="rounded-circle bg-warning text-dark p-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px;">
+            <i class="bi ${isAnalysis ? 'bi-graph-up' : 'bi-stars'}"></i>
+        </div>
+        <div class="bg-light p-3 rounded-4 border" style="max-width: 85%;">
+            <div class="small text-dark lh-base">${formatted}</div>
+        </div>
+    `;
+    area.appendChild(msg);
+    area.scrollTop = area.scrollHeight;
+}
+
+function appendBotTypingIndicator() {
+    const area = document.getElementById('chatMessageArea');
+    const id = 'typing-' + Date.now();
+    const msg = document.createElement('div');
+    msg.id = id;
+    msg.className = 'd-flex gap-3 mb-4';
+    msg.innerHTML = `
+        <div class="rounded-circle bg-warning text-dark p-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px;">
+            <i class="bi bi-stars"></i>
+        </div>
+        <div class="bg-light p-3 rounded-4 border d-flex align-items-center gap-2">
+            <span class="spinner-grow spinner-grow-sm text-warning" role="status"></span>
+            <span class="small text-muted">Analyzing financial records & drafting advice...</span>
+        </div>
+    `;
+    area.appendChild(msg);
+    area.scrollTop = area.scrollHeight;
+    return id;
+}
+
+function askQuestion(q) {
+    document.getElementById('userInput').value = q;
+    submitChat();
+}
+
+function submitChat() {
+    const input = document.getElementById('userInput');
+    const question = input.value.trim();
+    if (!question) return;
+
+    input.value = '';
+    appendUserMessage(question);
+    const typingId = appendBotTypingIndicator();
+
+    fetch("{{ url_for('ai_advisor.ask') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: question })
+    })
+    .then(res => res.json())
+    .then(data => {
+        const el = document.getElementById(typingId);
+        if (el) el.remove();
+        if (data.success) {
+            appendBotMessage(data.answer);
+        } else {
+            appendBotMessage("An error occurred: " + (data.error || "Please try again."));
+        }
+    })
+    .catch(err => {
+        const el = document.getElementById(typingId);
+        if (el) el.remove();
+        appendBotMessage("Service connection error. Please verify your connection or AI key.");
+    });
+}
+
+function triggerDeepSpendingAnalysis() {
+    appendUserMessage("Please perform a deep analysis of my current spending habits.");
+    const typingId = appendBotTypingIndicator();
+
+    fetch("{{ url_for('ai_advisor.analyze_spending') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+    })
+    .then(res => res.json())
+    .then(data => {
+        const el = document.getElementById(typingId);
+        if (el) el.remove();
+        if (data.success) {
+            appendBotMessage(data.analysis, true);
+        } else {
+            appendBotMessage("Could not complete spending analysis.");
+        }
+    })
+    .catch(err => {
+        const el = document.getElementById(typingId);
+        if (el) el.remove();
+        appendBotMessage("Error contacting analysis engine.");
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.innerText = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

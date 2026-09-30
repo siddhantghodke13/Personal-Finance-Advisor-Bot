@@ -1,0 +1,441 @@
+{% extends "base.html" %}
+
+{% block title %}Financial Dashboard — Personal Finance Advisor Bot{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-4 py-4">
+
+    <!-- Top Bar: Month Selector & Quick Actions -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-extrabold mb-1">Financial Dashboard</h2>
+            <div class="text-muted small">
+                Overview for <strong>{{ months_list[selected_month - 1][1] }} {{ selected_year }}</strong>
+                {% if health.badge %}
+                    <span class="badge bg-secondary ms-2">{{ health.badge }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- Month / Year Selector Form -->
+            <form method="GET" action="{{ url_for('dashboard.index') }}" class="d-flex gap-2">
+                <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+                    {% for m_num, m_name in months_list %}
+                        <option value="{{ m_num }}" {% if m_num == selected_month %}selected{% endif %}>{{ m_name }}</option>
+                    {% endfor %}
+                </select>
+                <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                    {% for y in years_list %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <a href="{{ url_for('ai_advisor.index') }}" class="btn btn-warning btn-sm fw-semibold shadow-sm">
+                <i class="bi bi-stars me-1"></i> AI Advisor
+            </a>
+            <a href="{{ url_for('reports.index', month=selected_month, year=selected_year) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-file-earmark-bar-graph me-1"></i> Reports
+            </a>
+        </div>
+    </div>
+
+    <!-- Financial Health Banner -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 border-start border-4 border-{{ health.color }} bg-white">
+        <div class="card-body p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="health-icon-box bg-{{ health.color }}-subtle text-{{ health.color }} rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                    {% if health.status == 'Good' %}
+                        <i class="bi bi-shield-check fs-4"></i>
+                    {% elif health.status == 'Moderate' %}
+                        <i class="bi bi-info-circle fs-4"></i>
+                    {% else %}
+                        <i class="bi bi-exclamation-triangle fs-4"></i>
+                    {% endif %}
+                </div>
+                <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small text-muted fw-semibold text-uppercase tracking-wider">Financial Health Status:</span>
+                        <span class="badge bg-{{ health.color }} text-white">{{ health.status }}</span>
+                    </div>
+                    <div class="small text-secondary mt-1">{{ health.explanation }}</div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#addIncomeModal">
+                    <i class="bi bi-plus-circle me-1"></i> Add Income
+                </button>
+                <button type="button" class="btn btn-danger btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
+                    <i class="bi bi-dash-circle me-1"></i> Add Expense
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 Primary Metric Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Card 1: Total Income -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 metric-card bg-white p-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase">Total Income</span>
+                    <div class="metric-icon bg-success-subtle text-success rounded-3 p-2">
+                        <i class="bi bi-wallet2 fs-5"></i>
+                    </div>
+                </div>
+                <div class="h3 fw-bold text-success mb-1">{{ summary.total_income|inr }}</div>
+                <div class="small text-muted">
+                    {% if comparison.has_previous_data and comparison.income_change_pct is not None %}
+                        <span class="{% if comparison.income_change_pct >= 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                            <i class="bi bi-arrow-{% if comparison.income_change_pct >= 0 %}up{% else %}down{% endif %}"></i>
+                            {{ comparison.income_change_pct }}%
+                        </span> vs prev month
+                    {% else %}
+                        <span>Current month credited</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2: Total Expenses -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 metric-card bg-white p-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase">Total Expenses</span>
+                    <div class="metric-icon bg-danger-subtle text-danger rounded-3 p-2">
+                        <i class="bi bi-credit-card-2-front fs-5"></i>
+                    </div>
+                </div>
+                <div class="h3 fw-bold text-danger mb-1">{{ summary.total_expenses|inr }}</div>
+                <div class="small text-muted">
+                    {% if comparison.has_previous_data and comparison.expense_change_pct is not None %}
+                        <span class="{% if comparison.expense_change_pct <= 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                            <i class="bi bi-arrow-{% if comparison.expense_change_pct > 0 %}up{% else %}down{% endif %}"></i>
+                            {{ comparison.expense_change_pct }}%
+                        </span> vs prev month
+                    {% else %}
+                        <span>{{ summary.expense_ratio }}% of total income</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 3: Total Savings & Rate -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 metric-card bg-white p-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase">Total Savings</span>
+                    <div class="metric-icon bg-info-subtle text-info rounded-3 p-2">
+                        <i class="bi bi-piggy-bank fs-5"></i>
+                    </div>
+                </div>
+                <div class="h3 fw-bold text-info mb-1">{{ summary.total_savings|inr }}</div>
+                <div class="small d-flex align-items-center justify-content-between">
+                    <span class="text-muted">Savings Rate:</span>
+                    <span class="badge bg-info-subtle text-info fw-bold">{{ summary.savings_rate }}%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4: Remaining Balance -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 metric-card bg-white p-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase">Remaining Balance</span>
+                    <div class="metric-icon bg-primary-subtle text-primary rounded-3 p-2">
+                        <i class="bi bi-cash-stack fs-5"></i>
+                    </div>
+                </div>
+                <div class="h3 fw-bold {% if summary.remaining_balance >= 0 %}text-primary{% else %}text-danger{% endif %} mb-1">
+                    {{ summary.remaining_balance|inr }}
+                </div>
+                <div class="small text-muted">
+                    Income - Expenses
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section: 4 Charts -->
+    <div class="row g-4 mb-4">
+        <!-- Chart 1: Income vs Expenses -->
+        <div class="col-lg-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
+                <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-bar-chart-fill text-primary"></i> Income vs Expenses
+                </h6>
+                <div class="chart-container" style="position: relative; height: 220px;">
+                    <canvas id="incomeVsExpenseChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart 2: Expenses by Category -->
+        <div class="col-lg-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
+                <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-pie-chart-fill text-warning"></i> Expenses by Category
+                </h6>
+                <div class="chart-container" style="position: relative; height: 220px;">
+                    <canvas id="categoryExpenseChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart 3: Monthly Savings Allocation -->
+        <div class="col-lg-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
+                <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-donut-chart text-info"></i> Savings vs Spending
+                </h6>
+                <div class="chart-container" style="position: relative; height: 220px;">
+                    <canvas id="savingsDoughnutChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart 4: Budget vs Actual Spending -->
+        <div class="col-lg-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
+                <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-sliders text-success"></i> Budget vs Actual
+                </h6>
+                <div class="chart-container" style="position: relative; height: 220px;">
+                    <canvas id="budgetVsActualChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lower Section: Budget Status & Recent Transactions -->
+    <div class="row g-4">
+        <!-- Budget Health Progress Table -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 bg-white h-100">
+                <div class="card-header bg-transparent border-0 pt-4 px-4 pb-2 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="fw-bold mb-0">Budget Performance</h5>
+                        <small class="text-muted">Category limits and actual utilization</small>
+                    </div>
+                    <a href="{{ url_for('budget.index', month=selected_month, year=selected_year) }}" class="btn btn-outline-primary btn-sm">
+                        Manage Budget
+                    </a>
+                </div>
+                <div class="card-body px-4">
+                    {% if budget_perf.categories %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light small text-uppercase text-muted">
+                                    <tr>
+                                        <th>Category</th>
+                                        <th>Planned</th>
+                                        <th>Actual</th>
+                                        <th>Progress</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for b in budget_perf.categories %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ b.category_name }}</td>
+                                        <td>{{ b.planned|inr }}</td>
+                                        <td>{{ b.actual|inr }}</td>
+                                        <td style="min-width: 140px;">
+                                            <div class="progress" style="height: 7px;">
+                                                <div class="progress-bar {% if b.is_over_budget %}bg-danger{% elif b.percent_used > 80 %}bg-warning{% else %}bg-success{% endif %}"
+                                                     role="progressbar"
+                                                     style="width: {{ [b.percent_used, 100]|min }}%;"></div>
+                                            </div>
+                                            <span class="small text-muted">{{ b.percent_used }}%</span>
+                                        </td>
+                                        <td>
+                                            {% if b.is_over_budget %}
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Over Budget</span>
+                                            {% else %}
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle">On Track</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-calculator fs-1 d-block mb-2 text-secondary"></i>
+                            <p class="mb-2">No category budgets created for this month.</p>
+                            <a href="{{ url_for('budget.index', month=selected_month, year=selected_year) }}" class="btn btn-sm btn-primary">
+                                Create Monthly Budget
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 bg-white h-100">
+                <div class="card-header bg-transparent border-0 pt-4 px-4 pb-2 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="fw-bold mb-0">Recent Activity</h5>
+                        <small class="text-muted">Latest income & expense entries</small>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            View All
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                            <li><a class="dropdown-item" href="{{ url_for('income.index') }}">All Income</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('expenses.index') }}">All Expenses</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body px-4">
+                    {% if recent_transactions %}
+                        <div class="list-group list-group-flush">
+                            {% for t in recent_transactions %}
+                            <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center border-bottom-subtle">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="rounded-circle p-2 d-flex align-items-center justify-content-center {% if t.type == 'income' %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %}" style="width: 38px; height: 38px;">
+                                        {% if t.type == 'income' %}
+                                            <i class="bi bi-arrow-down-left"></i>
+                                        {% else %}
+                                            <i class="bi bi-arrow-up-right"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold text-dark">{{ t.title }}</div>
+                                        <div class="small text-muted">{{ t.category }} • {{ t.date }}</div>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold {% if t.type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                        {% if t.type == 'income' %}+{% else %}-{% endif %}{{ t.amount|inr }}
+                                    </div>
+                                    <div class="small text-muted">{{ t.payment_method }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-receipt fs-1 d-block mb-2 text-secondary"></i>
+                            <p class="mb-0">No recent transactions recorded yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Quick Add Income -->
+<div class="modal fade" id="addIncomeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('income.add') }}" class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Record Income</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Source</label>
+                    <select name="source" class="form-select" required>
+                        <option value="Salary">Salary</option>
+                        <option value="Freelance">Freelance</option>
+                        <option value="Part-time">Part-time</option>
+                        <option value="Scholarship">Scholarship</option>
+                        <option value="Business">Business</option>
+                        <option value="Investments">Investments</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Amount (₹)</label>
+                    <input type="number" step="0.01" min="1" name="amount" class="form-control" placeholder="e.g. 50000" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Date</label>
+                    <input type="date" name="date" class="form-control" value="{{ selected_year }}-{{ '%02d'|format(selected_month) }}-01" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Description (Optional)</label>
+                    <input type="text" name="description" class="form-control" placeholder="e.g. Monthly salary credit">
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary fw-semibold">Save Income</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Quick Add Expense -->
+<div class="modal fade" id="addExpenseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('expenses.add') }}" class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Record Expense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Category</label>
+                    <select name="category_id" class="form-select" required>
+                        {% for cat in category_spending %}
+                            <option value="{{ cat.category_id }}">{{ cat.category_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Amount (₹)</label>
+                    <input type="number" step="0.01" min="1" name="amount" class="form-control" placeholder="e.g. 2500" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Payment Method</label>
+                    <select name="payment_method" class="form-select" required>
+                        <option value="UPI" selected>UPI</option>
+                        <option value="Debit Card">Debit Card</option>
+                        <option value="Credit Card">Credit Card</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Date</label>
+                    <input type="date" name="date" class="form-control" value="{{ selected_year }}-{{ '%02d'|format(selected_month) }}-15" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Description (Optional)</label>
+                    <input type="text" name="description" class="form-control" placeholder="e.g. Grocery shopping">
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-danger fw-semibold">Save Expense</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Embed dynamic data from Python Flask backend for Chart.js
+    const dashboardData = {
+        totalIncome: {{ summary.total_income|float }},
+        totalExpenses: {{ summary.total_expenses|float }},
+        totalSavings: {{ summary.total_savings|float }},
+        categoryLabels: {{ chart_category_labels|tojson }},
+        categoryData: {{ chart_category_data|tojson }},
+        budgetLabels: {{ budget_labels|tojson }},
+        budgetPlanned: {{ budget_planned|tojson }},
+        budgetActual: {{ budget_actual|tojson }}
+    };
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

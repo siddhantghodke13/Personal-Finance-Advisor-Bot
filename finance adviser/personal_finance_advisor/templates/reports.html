@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Monthly Financial Report — Personal Finance Advisor Bot{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-4 py-4">
+    <!-- Header with Actions & Print -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 no-print">
+        <div>
+            <h2 class="fw-extrabold mb-1">Monthly Financial Report</h2>
+            <p class="text-muted small mb-0">Audited monthly breakdown with category variance and AI recommendations</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <!-- Selector -->
+            <form method="GET" action="{{ url_for('reports.index') }}" class="d-flex gap-2">
+                <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+                    {% for m_num, m_name in months_list %}
+                        <option value="{{ m_num }}" {% if m_num == selected_month %}selected{% endif %}>{{ m_name }}</option>
+                    {% endfor %}
+                </select>
+                <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                    {% for y in years_list %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <a href="{{ url_for('reports.export_json', month=selected_month, year=selected_year) }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                <i class="bi bi-filetype-json me-1"></i> Export JSON
+            </a>
+            <button class="btn btn-dark btn-sm fw-semibold" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i> Print / Save PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Printable Report Paper Card -->
+    <div class="card border-0 shadow-sm rounded-4 bg-white p-4 p-lg-5 printable-report">
+        <!-- Report Header -->
+        <div class="d-flex justify-content-between align-items-start border-bottom pb-4 mb-4">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="bg-primary text-white p-2 rounded-3">
+                        <i class="bi bi-wallet2 fs-5"></i>
+                    </span>
+                    <h4 class="fw-extrabold mb-0">Personal Finance Advisor Bot</h4>
+                </div>
+                <div class="text-muted small">Official Monthly Financial Performance Report</div>
+                <div class="text-muted small">User: <strong>{{ current_user.name }}</strong> ({{ current_user.email }})</div>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 fs-6">
+                    {{ months_list[selected_month - 1][1] }} {{ selected_year }}
+                </span>
+                <div class="small text-muted mt-2">Generated on: {{ report.generated_at }}</div>
+            </div>
+        </div>
+
+        <!-- 4 Core Metrics Grid -->
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-lg-3">
+                <div class="p-3 rounded-3 bg-light border">
+                    <span class="text-muted small text-uppercase fw-semibold d-block">Total Income</span>
+                    <span class="h4 fw-bold text-success">{{ report.summary.total_income|inr }}</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="p-3 rounded-3 bg-light border">
+                    <span class="text-muted small text-uppercase fw-semibold d-block">Total Expenses</span>
+                    <span class="h4 fw-bold text-danger">{{ report.summary.total_expenses|inr }}</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="p-3 rounded-3 bg-light border">
+                    <span class="text-muted small text-uppercase fw-semibold d-block">Total Savings</span>
+                    <span class="h4 fw-bold text-info">{{ report.summary.total_savings|inr }}</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="p-3 rounded-3 bg-light border">
+                    <span class="text-muted small text-uppercase fw-semibold d-block">Savings Rate</span>
+                    <span class="h4 fw-bold text-primary">{{ report.summary.savings_rate }}%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section: Category Spending Breakdown -->
+        <h5 class="fw-bold mb-3 border-bottom pb-2">Category-Wise Expenditure Breakdown</h5>
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered table-sm align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Category</th>
+                        <th>Actual Spent (₹)</th>
+                        <th>Monthly Cap (₹)</th>
+                        <th>% of Total Outflow</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat in report.categories %}
+                    <tr>
+                        <td class="fw-semibold">{{ cat.category_name }}</td>
+                        <td>{{ cat.spent|inr }}</td>
+                        <td>{% if cat.monthly_limit > 0 %}{{ cat.monthly_limit|inr }}{% else %}Unlimited{% endif %}</td>
+                        <td>{{ cat.percent_of_total }}%</td>
+                        <td>
+                            {% if cat.is_over_limit %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Exceeded Limit</span>
+                            {% else %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">Within Limits</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Section: Financial Observations & AI Recommendations -->
+        <div class="row g-4 mt-1">
+            <div class="col-md-6">
+                <div class="p-3 rounded-3 bg-light border h-100">
+                    <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                        <i class="bi bi-graph-up text-primary"></i> Data Observations
+                    </h6>
+                    <ul class="list-unstyled mb-0">
+                        {% for obs in report.observations %}
+                            <li class="mb-2 d-flex align-items-start gap-2 small">
+                                <i class="bi bi-check-circle-fill text-success mt-1"></i>
+                                <span>{{ obs }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="p-3 rounded-3 bg-warning-subtle border border-warning-subtle h-100">
+                    <h6 class="fw-bold mb-3 text-warning-emphasis d-flex align-items-center gap-2">
+                        <i class="bi bi-stars text-warning-emphasis"></i> AI Recommendations
+                    </h6>
+                    <ul class="list-unstyled mb-0">
+                        {% for rec in ai_recommendations %}
+                            <li class="mb-2 d-flex align-items-start gap-2 small text-dark">
+                                <i class="bi bi-arrow-right-circle-fill text-warning mt-1"></i>
+                                <span>{{ rec }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-5 pt-3 border-top text-center text-muted small">
+            This educational statement is computed automatically based on the user's logged financial transactions. Values are in Indian Rupees (INR, ₹).
+        </div>
+    </div>
+</div>
+{% endblock %}

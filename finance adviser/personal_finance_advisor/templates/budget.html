@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Budget Management — Personal Finance Advisor Bot{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-4 py-4">
+    <!-- Header with Smart Budget Button -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-extrabold mb-1">Budget Planning</h2>
+            <p class="text-muted small mb-0">Set category allowances, prevent overspending, and simulate AI budgets</p>
+        </div>
+        <div class="d-flex gap-2">
+            <!-- AI Smart Budget Generator Trigger -->
+            <button class="btn btn-warning fw-bold shadow-sm" onclick="generateSmartBudget()">
+                <i class="bi bi-stars me-1"></i> Generate Smart Budget (AI)
+            </button>
+            <button class="btn btn-primary fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#setBudgetModal">
+                <i class="bi bi-plus-circle me-1"></i> Set Category Budget
+            </button>
+        </div>
+    </div>
+
+    <!-- Month / Year Selector & High-level Metrics -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
+                <form method="GET" action="{{ url_for('budget.index') }}" class="d-flex gap-2 align-items-center">
+                    <span class="small fw-bold text-muted text-nowrap">Period:</span>
+                    <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% for m_num, m_name in months_list %}
+                            <option value="{{ m_num }}" {% if m_num == selected_month %}selected{% endif %}>{{ m_name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% for y in years_list %}
+                            <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between small text-muted mb-1">
+                        <span>Overall Budget Consumption:</span>
+                        <span class="fw-bold text-dark">{{ performance.overall_percent_used }}%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar {% if performance.overall_percent_used > 100 %}bg-danger{% elif performance.overall_percent_used > 80 %}bg-warning{% else %}bg-success{% endif %}"
+                             role="progressbar"
+                             style="width: {{ [performance.overall_percent_used, 100]|min }}%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
+                <span class="text-muted small fw-semibold text-uppercase">Total Planned Budget</span>
+                <div class="h3 fw-bold text-primary mb-1">{{ performance.total_planned|inr }}</div>
+                <div class="small text-muted">Allocated across active categories</div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted small fw-semibold text-uppercase">Actual Spending</span>
+                    {% if performance.overbudget_count > 0 %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                            {{ performance.overbudget_count }} Exceeded
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="h3 fw-bold {% if performance.total_actual > performance.total_planned %}text-danger{% else %}text-success{% endif %} mb-1">
+                    {{ performance.total_actual|inr }}
+                </div>
+                <div class="small text-muted">
+                    Remaining Unspent: <strong>{{ performance.remaining|inr }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Budget Performance Table -->
+    <div class="card border-0 shadow-sm rounded-4 bg-white">
+        <div class="card-body p-0">
+            {% if performance.categories %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase text-muted">
+                            <tr>
+                                <th class="ps-4">Category</th>
+                                <th>Planned Budget</th>
+                                <th>Actual Spent</th>
+                                <th>Remaining</th>
+                                <th>Utilization</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in performance.categories %}
+                            <tr class="{% if c.is_over_budget %}table-danger-subtle{% endif %}">
+                                <td class="ps-4 fw-semibold">{{ c.category_name }}</td>
+                                <td>{{ c.planned|inr }}</td>
+                                <td class="fw-bold">{{ c.actual|inr }}</td>
+                                <td>
+                                    <span class="{% if c.remaining == 0 %}text-danger{% else %}text-muted{% endif %}">
+                                        {{ c.remaining|inr }}
+                                    </span>
+                                </td>
+                                <td style="min-width: 180px;">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height: 8px;">
+                                            <div class="progress-bar {% if c.is_over_budget %}bg-danger{% elif c.percent_used > 80 %}bg-warning{% else %}bg-success{% endif %}"
+                                                 style="width: {{ [c.percent_used, 100]|min }}%;"></div>
+                                        </div>
+                                        <span class="small fw-semibold text-muted" style="min-width: 45px;">{{ c.percent_used }}%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if c.is_over_budget %}
+                                        <span class="badge bg-danger text-white">
+                                            <i class="bi bi-exclamation-triangle-fill me-1"></i> Over Budget
+                                        </span>
+                                    {% elif c.percent_used >= 80 %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-bell-fill me-1"></i> Near Limit
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                            <i class="bi bi-check-circle me-1"></i> On Budget
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-4">
+                                    {% if c.budget_id %}
+                                        <form method="POST" action="{{ url_for('budget.delete_budget', id=c.budget_id) }}" class="d-inline" onsubmit="return confirm('Clear budget allocation for {{ c.category_name }}?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Clear Budget">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                onclick="openSetBudgetModal({{ c.category_id }}, '{{ c.category_name }}', {{ c.planned }})">
+                                            Set
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-pie-chart fs-1 d-block mb-2 text-secondary"></i>
+                    <p class="mb-2">No category budgets established yet.</p>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#setBudgetModal">Set First Budget</button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Set Budget -->
+<div class="modal fade" id="setBudgetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('budget.set_budget') }}" class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="setBudgetModalTitle">Set Monthly Budget</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="month" value="{{ selected_month }}">
+                <input type="hidden" name="year" value="{{ selected_year }}">
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Expense Category</label>
+                    <select name="category_id" id="modalCategoryId" class="form-select" required>
+                        {% for cat in categories %}
+                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Planned Allocation for {{ months_list[selected_month - 1][1] }} (₹)</label>
+                    <input type="number" step="100" min="0" name="planned_amount" id="modalPlannedAmount" class="form-control" placeholder="e.g. 8000" required>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary fw-semibold">Save Budget</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: AI Smart Budget Review & Confirmation -->
+<div class="modal fade" id="aiBudgetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form method="POST" action="{{ url_for('budget.apply_ai_budget') }}" class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white border-0">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="p-2 rounded-3 bg-warning text-dark"><i class="bi bi-stars fs-5"></i></span>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">AI Smart Budget Recommendation</h5>
+                        <small class="text-white-50">Review and adjust proposed monthly targets before applying</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="aiBudgetModalBody">
+                <div class="text-center py-4" id="aiBudgetSpinner">
+                    <div class="spinner-border text-warning mb-2" role="status"></div>
+                    <div class="fw-semibold">AI is analyzing your income and spending patterns...</div>
+                    <div class="text-muted small">Generating 50/30/20 balanced recommendations</div>
+                </div>
+                <div id="aiBudgetResult" style="display: none;">
+                    <div class="alert alert-info border-0 shadow-sm rounded-3 mb-4" id="aiBudgetSummary"></div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <div class="p-3 rounded-3 bg-light border">
+                                <span class="text-muted small d-block">Suggested Monthly Savings Target</span>
+                                <span class="h4 fw-bold text-success" id="aiSavingsTarget">₹0</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="p-3 rounded-3 bg-light border">
+                                <span class="text-muted small d-block">Emergency Fund Allocation</span>
+                                <span class="h4 fw-bold text-info" id="aiEmergencyFund">₹0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="month" value="{{ selected_month }}">
+                    <input type="hidden" name="year" value="{{ selected_year }}">
+
+                    <h6 class="fw-bold mb-2">Category Allocations (Editable):</h6>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm align-middle" id="aiBudgetTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Suggested Amount (₹)</th>
+                                    <th>Reasoning / Basis</th>
+                                </tr>
+                            </thead>
+                            <tbody id="aiBudgetTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0" id="aiBudgetModalFooter" style="display: none;">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Discard</button>
+                <button type="submit" class="btn btn-success fw-bold">
+                    <i class="bi bi-check2-circle me-1"></i> Apply Smart Budget
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openSetBudgetModal(catId, catName, currentPlanned) {
+    document.getElementById('modalCategoryId').value = catId;
+    document.getElementById('modalPlannedAmount').value = currentPlanned || '';
+    const modal = new bootstrap.Modal(document.getElementById('setBudgetModal'));
+    modal.show();
+}
+
+function generateSmartBudget() {
+    const modal = new bootstrap.Modal(document.getElementById('aiBudgetModal'));
+    modal.show();
+
+    document.getElementById('aiBudgetSpinner').style.display = 'block';
+    document.getElementById('aiBudgetResult').style.display = 'none';
+    document.getElementById('aiBudgetModalFooter').style.display = 'none';
+
+    fetch("{{ url_for('budget.ai_generate') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            month: {{ selected_month }},
+            year: {{ selected_year }}
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById('aiBudgetSpinner').style.display = 'none';
+        document.getElementById('aiBudgetResult').style.display = 'block';
+        document.getElementById('aiBudgetModalFooter').style.display = 'flex';
+
+        document.getElementById('aiBudgetSummary').innerText = data.summary || "Balanced budget generated.";
+        document.getElementById('aiSavingsTarget').innerText = "₹" + (data.savings_target || 0).toLocaleString('en-IN');
+        document.getElementById('aiEmergencyFund').innerText = "₹" + (data.emergency_fund || 0).toLocaleString('en-IN');
+
+        const tbody = document.getElementById('aiBudgetTableBody');
+        tbody.innerHTML = '';
+
+        if (data.budget && Array.isArray(data.budget)) {
+            data.budget.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="fw-semibold">
+                        <input type="hidden" name="category_name[]" value="${item.category}">
+                        ${item.category}
+                    </td>
+                    <td style="max-width: 150px;">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" step="50" min="0" name="category_budget[]" class="form-control" value="${item.amount}">
+                        </div>
+                    </td>
+                    <td class="small text-muted">${item.reason || 'Optimal allocation'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    })
+    .catch(err => {
+        document.getElementById('aiBudgetSpinner').innerHTML = `
+            <div class="text-danger py-3">
+                <i class="bi bi-exclamation-triangle fs-3 d-block mb-2"></i>
+                Failed to generate budget. Please try again.
+            </div>
+        `;
+    });
+}
+</script>
+{% endblock %}
